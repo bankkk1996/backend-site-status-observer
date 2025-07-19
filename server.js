@@ -3,138 +3,183 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const { Low, JSONFile } = require('lowdb');
-const fs = require("fs");
+const { Pool } = require("pg");  // pg client
 const { checkWebsite } = require("./utils/checker");
 
 dotenv.config();
 
 const app = express();
-const port = process.env.port || 3001;
+const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
 
-const websiteAdapter = new JSONFile('db.json');
-const userAdapter = new JSONFile('users.json');
+// สร้าง pool สำหรับเชื่อมต่อ DB
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,  // ถ้า Railway ต้องใช้ SSL แบบนี้
+  },
+});
 
-const db = new Low(websiteAdapter);
-const usersDb = new Low(userAdapter);
+// ฟังก์ชันตรวจสอบ JWT
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader?.split(" ")[1];
+  if (!token) return res.sendStatus(401);
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;
+    next();
+  });
+};
 
-// ✅ ห่อด้วย async IIFE (Immediately Invoked Function Expression)
-(async () => {
-  await db.read();
-  db.data ||= { websites: [], logs: [] };
-
-  await usersDb.read();
-  usersDb.data ||= { users: [] };
-
-  const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers["authorization"];
-    const token = authHeader?.split(" ")[1];
-    if (!token) return res.sendStatus(401);
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-      if (err) return res.sendStatus(403);
-      req.user = user;
-      next();
-    });
-  };
-
-  // Register route
-  app.post("/register", async (req, res) => {
-    const { username, password } = req.body;
-    const existing = usersDb.data.users.find((u) => u.username === username);
-    if (existing) return res.status(400).json({ message: "User exists" });
+// Register route
+app.post("/register", async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const userResult = await pool.query("SELECT * FROM users WHERE username=$1", [username]);
+    if (userResult.rows.length > 0)
+      return res.status(400).json({ message: "User exists" });
 
     const hash = await bcrypt.hash(password, 10);
-    usersDb.data.users.push({ id: Date.now(), username, password: hash });
-    await usersDb.write();
+    await pool.query(
+      "INSERT INTO users (username, password) VALUES ($1, $2)",
+      [username, hash]
+    );
+
     res.json({ message: "Registered" });
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
-  // Login route
-  app.post("/login", async (req, res) => {
-    const { username, password } = req.body;
-    const user = usersDb.data.users.find((u) => u.username === username);
-    if (!user) return res.status(400).json({ message: "User not found!" });
+// Login route
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const userResult = await pool.query("SELECT * FROM users WHERE username=$1", [username]);
+    if (userResult.rows.length === 0)
+      return res.status(400).json({ message: "User not found!" });
 
+    const user = userResult.rows[0];
     const valid = await bcrypt.compare(password, user.password);
     if (!valid)
       return res.status(403).json({ message: "Invalid credentials!" });
 
-    const token = jwt.sign(
-      { username: user.username },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "1d",
-      }
-    );
+    const token = jwt.sign({ username: user.username }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
 
     res.json({ token });
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
-  app.post("/website", authenticateToken, async (req, res) => {
-    const { id, name, url } = req.body;
+// Add website
+app.post("/website", authenticateToken, async (req, res) => {
+  const { id, name, url } = req.body;
+  const now = new Date();
+
+  try {
     const check = await checkWebsite(url);
-    const now = new Date().toISOString();
 
-    db.data.websites.push({
-      id,
-      name,
-      url,
-      status: check.status,
-      responseTime: check.responseTime,
-      lastchecked: now,
-      sslExpired: check.sslExpired,
-      sslExpiryDate: check.sslExpiryDate,
-      domainExpiryDate: check.domainExpiryDate,
-      uptime: check.status === "up" ? 1 : 0,
-    });
+    await pool.query(
+      `INSERT INTO websites (id, name, url, status, response_time, last_checked, ssl_expired, ssl_expiry_date, domain_expiry_date, uptime)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [
+        id,
+        name,
+        url,
+        check.status,
+        check.responseTime,
+        now,
+        check.sslExpired,
+        check.sslExpiryDate,
+        check.domainExpiryDate,
+        check.status === "up" ? 1 : 0,
+      ]
+    );
 
-    db.data.logs.push({
-      time: now,
-      action: `Add website ${name}`,
-      user: req.user.username,
-    });
+    await pool.query(
+      `INSERT INTO logs (time, action, username) VALUES ($1, $2, $3)`,
+      [now, `Add website ${name}`, req.user.username]
+    );
 
-    await db.write();
     res.json({ message: "Added", result: check });
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
-  app.post("/website/:id/check", authenticateToken, async (req, res) => {
-    const { id } = req.params;
+// Check website status by id
+app.post("/website/:id/check", authenticateToken, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const now = new Date();
 
-    const site = db.data.websites.find((w) => w.id === parseInt(id, 10));
-    if (!site) return res.status(404).json({ message: "Not Found" });
+  try {
+    const siteResult = await pool.query("SELECT * FROM websites WHERE id=$1", [id]);
+    if (siteResult.rows.length === 0) return res.status(404).json({ message: "Not Found" });
 
+    const site = siteResult.rows[0];
     const check = await checkWebsite(site.url);
-    site.status = check.status;
-    site.responseTime = check.responseTime;
-    site.lastchecked = new Date().toISOString();
-    site.sslExpired = check.sslExpired; // แก้ไขตรงนี้
-    site.sslExpiryDate = check.sslExpiryDate; // เก็บวันที่หมดอายุ SSL
-    site.domainExpiryDate = check.domainExpiryDate; // เก็บวันที่หมดอายุโดเมน (ถ้ามี)
-    site.uptime += check.status === "up" ? 1 : 0;
 
-    db.data.logs.push({
-      time: new Date().toISOString(),
-      action: `Check website ${site.name}`,
-      user: req.user.username,
-    });
+    const uptime = site.uptime + (check.status === "up" ? 1 : 0);
 
-    await db.write();
-    res.json(site);
-  });
+    await pool.query(
+      `UPDATE websites SET status=$1, response_time=$2, last_checked=$3, ssl_expired=$4, ssl_expiry_date=$5, domain_expiry_date=$6, uptime=$7 WHERE id=$8`,
+      [
+        check.status,
+        check.responseTime,
+        now,
+        check.sslExpired,
+        check.sslExpiryDate,
+        check.domainExpiryDate,
+        uptime,
+        id,
+      ]
+    );
 
-  app.get("/websites", authenticateToken, async (req, res) => {
-    res.json(db.data.websites);
-  });
+    await pool.query(
+      `INSERT INTO logs (time, action, username) VALUES ($1, $2, $3)`,
+      [now, `Check website ${site.name}`, req.user.username]
+    );
 
-  app.get("/logs", authenticateToken, async (req, res) => {
-    res.json(db.data.logs);
-  });
+    const updatedSiteResult = await pool.query("SELECT * FROM websites WHERE id=$1", [id]);
 
-  app.listen(port, () =>
-    console.log(`✅ Server running on http://localhost:${port}`)
-  );
-})();
+    res.json(updatedSiteResult.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Get all websites
+app.get("/websites", authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM websites");
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Get logs
+app.get("/logs", authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM logs ORDER BY time DESC");
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`✅ Server running on http://localhost:${port}`);
+});
