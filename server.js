@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const { Low } = require("lowdb");
-const { JSONFile } = require("lowdb/node");
+const FileSync = require('lowdb/adapters/FileSync')
 const fs = require("fs");
 const { checkWebsite } = require("./utils/checker");
 
@@ -18,8 +18,8 @@ app.use(express.json());
 
 // ✅ ห่อด้วย async IIFE (Immediately Invoked Function Expression)
 (async () => {
-  const db = new Low(new JSONFile("db.json"), { websites: [], logs: [] });
-  const usersDb = new Low(new JSONFile("users.json"), { users: [] });
+  const db = new FileSync('db.json');
+  const usersDb = new FileSync('users.json');
   await db.read();
   db.data ||= { websites: [], logs: [] };
 
