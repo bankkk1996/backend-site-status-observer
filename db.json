@@ -1,0 +1,100 @@
+{
+  "websites": [
+    {
+      "id": 1,
+      "name": "กาแฟเมืองปาน",
+      "url": "https://xn--12cm8chsm8frbf0c1fk.xn--o3cw4h",
+      "status": "up",
+      "responseTime": 1136,
+      "lastchecked": "2025-07-19T10:40:16.910Z",
+      "sslExpired": false,
+      "uptime": 8,
+      "sslExpiryDate": "2025-09-14T10:40:15.569Z",
+      "domainExpiryDate": "2025-08-31T17:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "รู้จัก.ไทย",
+      "url": "https://xn--12cn4frcvb5f.xn--o3cw4h",
+      "status": "up",
+      "responseTime": 877,
+      "lastchecked": "2025-07-19T10:40:07.590Z",
+      "sslExpired": false,
+      "uptime": 5,
+      "sslExpiryDate": "2025-09-28T10:40:07.513Z",
+      "domainExpiryDate": "2027-06-16T17:00:00.000Z"
+    }
+  ],
+  "logs": [
+    {
+      "time": "2025-07-19T09:59:25.875Z",
+      "action": "Add website กาแฟเมืองปาน",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T09:59:44.866Z",
+      "action": "Check website กาแฟเมืองปาน",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T10:00:46.503Z",
+      "action": "Check website กาแฟเมืองปาน",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T10:01:18.717Z",
+      "action": "Check website กาแฟเมืองปาน",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T10:03:03.675Z",
+      "action": "Check website กาแฟเมืองปาน",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T10:04:52.184Z",
+      "action": "Check website กาแฟเมืองปาน",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T10:05:58.438Z",
+      "action": "Check website กาแฟเมืองปาน",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T10:07:17.326Z",
+      "action": "Check website กาแฟเมืองปาน",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T10:08:25.548Z",
+      "action": "Add website รู้จัก.ไทย",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T10:19:18.099Z",
+      "action": "Check website รู้จัก.ไทย",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T10:19:50.493Z",
+      "action": "Check website รู้จัก.ไทย",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T10:25:27.428Z",
+      "action": "Check website รู้จัก.ไทย",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T10:40:07.590Z",
+      "action": "Check website รู้จัก.ไทย",
+      "user": "admin"
+    },
+    {
+      "time": "2025-07-19T10:40:16.910Z",
+      "action": "Check website กาแฟเมืองปาน",
+      "user": "admin"
+    }
+  ]
+}
