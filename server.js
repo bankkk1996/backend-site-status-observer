@@ -3,8 +3,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const { Low } = require("lowdb");
-const FileSync = require('lowdb/adapters/FileSync')
+const { Low, JSONFile } = require('lowdb');
 const fs = require("fs");
 const { checkWebsite } = require("./utils/checker");
 
@@ -16,10 +15,14 @@ const port = process.env.port || 3001;
 app.use(cors());
 app.use(express.json());
 
+const websiteAdapter = new JSONFile('db.json');
+const userAdapter = new JSONFile('users.json');
+
+const db = new Low(websiteAdapter);
+const usersDb = new Low(userAdapter);
+
 // ✅ ห่อด้วย async IIFE (Immediately Invoked Function Expression)
 (async () => {
-  const db = new FileSync('db.json');
-  const usersDb = new FileSync('users.json');
   await db.read();
   db.data ||= { websites: [], logs: [] };
 
