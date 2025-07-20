@@ -122,10 +122,12 @@ app.patch("/users/:id", authenticateToken, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     const user = userResult.rows[0];
     // เช็คสิทธิ์ ถ้าไม่ใช่เจ้าของหรือ admin ห้ามแก้ไข
+
+
     if (req.user.id !== user.id) {
       return res
         .status(403)
-        .json({ message: "Permission denied", user: req.user });
+        .json({ message: "Permission denied", user: req.user, userDetail: user });
     }
 
     // ระบุเฉพาะ field ที่อยู่ใน DB จริง (กัน SQL injection หรือ field แปลก)
