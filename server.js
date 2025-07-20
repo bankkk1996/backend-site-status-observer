@@ -259,6 +259,43 @@ app.get("/websites", authenticateToken, async (req, res) => {
   }
 });
 
+app.patch("/website/:id", async (req, res)=>{
+  try {
+    const { id } = req.params;
+  
+    // ระบุเฉพาะ field ที่อยู่ใน DB จริง (กัน SQL injection หรือ field แปลก)
+    const validFields = ["name", "url"];
+    const updates = [];
+    const values = [];
+
+    let index = 1;
+    for (const key of validFields) {
+      if (req.body[key] !== undefined) {
+        updates.push(`${key} = $${index}`);
+        values.push(req.body[key]);
+        index++;
+      }
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ message: "No valid fields to update" });
+    }
+
+    values.push(id); // ID ไปอยู่ท้ายสุด
+    const query = `UPDATE websites SET ${updates.join(
+      ", "
+    )} WHERE id = $${index} RETURNING id, name, url`;
+    const result = await pool.query(query, values);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Website not found" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+})
+
 // Get logs
 app.get("/logs", authenticateToken, async (req, res) => {
   try {
