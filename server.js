@@ -117,9 +117,10 @@ app.get("/information", authenticateToken, async (req, res) => {
 app.patch("/users/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
 
+
   // เช็คสิทธิ์ ถ้าไม่ใช่เจ้าของหรือ admin ห้ามแก้ไข
   if (req.user.id !== id) {
-    return res.status(403).json({ message: "Permission denied" });
+    return res.status(403).json({ message: "Permission denied", user: req.user });
   }
 
   // ระบุเฉพาะ field ที่อยู่ใน DB จริง (กัน SQL injection หรือ field แปลก)
