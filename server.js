@@ -127,7 +127,7 @@ app.patch("/users/:id", authenticateToken, async (req, res) => {
     if (user.id !== id) {
       return res
         .status(403)
-        .json({ message: "Permission denied", user: req.user, userDetail: user });
+        .json({ message: "Permission denied", user: req.user, userDetail: user, id: id });
     }
 
     // ระบุเฉพาะ field ที่อยู่ใน DB จริง (กัน SQL injection หรือ field แปลก)
