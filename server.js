@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const { Pool } = require("pg");  // pg client
+const { Pool } = require("pg"); // pg client
 const { checkWebsite } = require("./utils/checker");
 
 dotenv.config();
@@ -18,7 +18,7 @@ app.use(express.json());
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false,  // ถ้า Railway ต้องใช้ SSL แบบนี้
+    rejectUnauthorized: false, // ถ้า Railway ต้องใช้ SSL แบบนี้
   },
 });
 
@@ -38,15 +38,18 @@ const authenticateToken = (req, res, next) => {
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
   try {
-    const userResult = await pool.query("SELECT * FROM users WHERE username=$1", [username]);
+    const userResult = await pool.query(
+      "SELECT * FROM users WHERE username=$1",
+      [username]
+    );
     if (userResult.rows.length > 0)
       return res.status(400).json({ message: "User exists" });
 
     const hash = await bcrypt.hash(password, 10);
-    await pool.query(
-      "INSERT INTO users (username, password) VALUES ($1, $2)",
-      [username, hash]
-    );
+    await pool.query("INSERT INTO users (username, password) VALUES ($1, $2)", [
+      username,
+      hash,
+    ]);
 
     res.json({ message: "Registered" });
   } catch (err) {
@@ -58,21 +61,94 @@ app.post("/register", async (req, res) => {
 // Login route
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
+
   try {
-    const userResult = await pool.query("SELECT * FROM users WHERE username=$1", [username]);
+    const userResult = await pool.query(
+      "SELECT * FROM users WHERE username=$1",
+      [username]
+    );
+
     if (userResult.rows.length === 0)
       return res.status(400).json({ message: "User not found!" });
 
     const user = userResult.rows[0];
     const valid = await bcrypt.compare(password, user.password);
+
     if (!valid)
       return res.status(403).json({ message: "Invalid credentials!" });
 
-    const token = jwt.sign({ username: user.username }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
-    });
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    // ✅ อัปเดตเวลาล็อกอินล่าสุด
+    await pool.query(
+      "UPDATE users SET last_login = NOW() WHERE id = $1",
+      [user.id]
+    );
 
     res.json({ token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/information", authenticateToken, async (req, res) => {
+  try {
+    const userResult = await pool.query(
+      "SELECT id, email, name, avatar, created_at, last_login FROM users WHERE username=$1",
+      [req.user.username]
+    );
+    if (userResult.rows.length === 0)
+      return res.status(404).json({ message: "User not found" });
+
+    res.json(userResult.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+
+app.patch("/users/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+
+  // เช็คสิทธิ์ ถ้าไม่ใช่เจ้าของหรือ admin ห้ามแก้ไข
+  if (req.user.id !== id) {
+    return res.status(403).json({ message: "Permission denied" });
+  }
+
+  // ระบุเฉพาะ field ที่อยู่ใน DB จริง (กัน SQL injection หรือ field แปลก)
+  const validFields = ["email", "name", "avatar", "last_login"];
+  const updates = [];
+  const values = [];
+
+  let index = 1;
+  for (const key of validFields) {
+    if (req.body[key] !== undefined) {
+      updates.push(`${key} = $${index}`);
+      values.push(req.body[key]);
+      index++;
+    }
+  }
+
+  if (updates.length === 0) {
+    return res.status(400).json({ message: "No valid fields to update" });
+  }
+
+  values.push(id); // ID ไปอยู่ท้ายสุด
+  const query = `UPDATE users SET ${updates.join(", ")} WHERE id = $${index} RETURNING id, email, name, avatar, created_at, last_login`;
+
+  try {
+    const result = await pool.query(query, values);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -122,8 +198,11 @@ app.post("/website/:id/check", authenticateToken, async (req, res) => {
   const now = new Date();
 
   try {
-    const siteResult = await pool.query("SELECT * FROM websites WHERE id=$1", [id]);
-    if (siteResult.rows.length === 0) return res.status(404).json({ message: "Not Found" });
+    const siteResult = await pool.query("SELECT * FROM websites WHERE id=$1", [
+      id,
+    ]);
+    if (siteResult.rows.length === 0)
+      return res.status(404).json({ message: "Not Found" });
 
     const site = siteResult.rows[0];
     const check = await checkWebsite(site.url);
@@ -149,7 +228,10 @@ app.post("/website/:id/check", authenticateToken, async (req, res) => {
       [now, `Check website ${site.name}`, req.user.username]
     );
 
-    const updatedSiteResult = await pool.query("SELECT * FROM websites WHERE id=$1", [id]);
+    const updatedSiteResult = await pool.query(
+      "SELECT * FROM websites WHERE id=$1",
+      [id]
+    );
 
     res.json(updatedSiteResult.rows[0]);
   } catch (err) {
