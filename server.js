@@ -124,7 +124,7 @@ app.patch("/users/:id", authenticateToken, async (req, res) => {
     // เช็คสิทธิ์ ถ้าไม่ใช่เจ้าของหรือ admin ห้ามแก้ไข
 
 
-    if (req.user.id !== user.id) {
+    if (user.id !== id) {
       return res
         .status(403)
         .json({ message: "Permission denied", user: req.user, userDetail: user });
