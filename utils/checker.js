@@ -27,7 +27,7 @@ async function checkDomainExpiry(domain) {
 
 async function checkWebsite(url) {
   const start = Date.now();
-  let status = "down";
+  let status = "offline";
   let responseTime = null;
   let sslExpired = null;
   let sslExpiryDate = null;
@@ -38,7 +38,7 @@ async function checkWebsite(url) {
   try {
     const response = await axios.get(url);
     const duration = Date.now() - start;
-    status = response.status === 200 ? "up" : "down";
+    status = response.status === 200 ? "online" : "offline";
     responseTime = duration;
 
     // ดึง hostname จาก url
@@ -74,7 +74,7 @@ async function checkWebsite(url) {
   } catch (err) {
     console.log(err);
     return {
-      status: "down",
+      status: "offline",
       responseTime: null,
       sslExpired: null,
       sslExpiryDate: null,
