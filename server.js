@@ -84,10 +84,9 @@ app.post("/login", async (req, res) => {
     );
 
     // ✅ อัปเดตเวลาล็อกอินล่าสุด
-    await pool.query(
-      "UPDATE users SET last_login = NOW() WHERE id = $1",
-      [user.id]
-    );
+    await pool.query("UPDATE users SET last_login = NOW() WHERE id = $1", [
+      user.id,
+    ]);
 
     res.json({ token });
   } catch (err) {
@@ -112,39 +111,45 @@ app.get("/information", authenticateToken, async (req, res) => {
   }
 });
 
-
-
 app.patch("/users/:id", authenticateToken, async (req, res) => {
-  const { id } = req.params;
-
-
-  // เช็คสิทธิ์ ถ้าไม่ใช่เจ้าของหรือ admin ห้ามแก้ไข
-  if (req.user.id !== id) {
-    return res.status(403).json({ message: "Permission denied", user: req.user });
-  }
-
-  // ระบุเฉพาะ field ที่อยู่ใน DB จริง (กัน SQL injection หรือ field แปลก)
-  const validFields = ["email", "name", "avatar", "last_login"];
-  const updates = [];
-  const values = [];
-
-  let index = 1;
-  for (const key of validFields) {
-    if (req.body[key] !== undefined) {
-      updates.push(`${key} = $${index}`);
-      values.push(req.body[key]);
-      index++;
-    }
-  }
-
-  if (updates.length === 0) {
-    return res.status(400).json({ message: "No valid fields to update" });
-  }
-
-  values.push(id); // ID ไปอยู่ท้ายสุด
-  const query = `UPDATE users SET ${updates.join(", ")} WHERE id = $${index} RETURNING id, email, name, avatar, created_at, last_login`;
-
   try {
+    const { id } = req.params;
+    const userResult = await pool.query(
+      "SELECT id, email, name, avatar, created_at, last_login FROM users WHERE username=$1",
+      [req.user.username]
+    );
+    if (userResult.rows.length === 0)
+      return res.status(404).json({ message: "User not found" });
+    const user = userResult.rows[0];
+    // เช็คสิทธิ์ ถ้าไม่ใช่เจ้าของหรือ admin ห้ามแก้ไข
+    if (req.user.id !== user.id) {
+      return res
+        .status(403)
+        .json({ message: "Permission denied", user: req.user });
+    }
+
+    // ระบุเฉพาะ field ที่อยู่ใน DB จริง (กัน SQL injection หรือ field แปลก)
+    const validFields = ["email", "name", "avatar", "last_login"];
+    const updates = [];
+    const values = [];
+
+    let index = 1;
+    for (const key of validFields) {
+      if (req.body[key] !== undefined) {
+        updates.push(`${key} = $${index}`);
+        values.push(req.body[key]);
+        index++;
+      }
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ message: "No valid fields to update" });
+    }
+
+    values.push(id); // ID ไปอยู่ท้ายสุด
+    const query = `UPDATE users SET ${updates.join(
+      ", "
+    )} WHERE id = $${index} RETURNING id, email, name, avatar, created_at, last_login`;
     const result = await pool.query(query, values);
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "User not found" });
