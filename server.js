@@ -98,7 +98,7 @@ app.post("/login", async (req, res) => {
 app.get("/information", authenticateToken, async (req, res) => {
   try {
     const userResult = await pool.query(
-      "SELECT id, email, name, avatar, created_at, last_login FROM users WHERE username=$1",
+      "SELECT id, name, last_login FROM users WHERE username=$1",
       [req.user.username]
     );
     if (userResult.rows.length === 0)
