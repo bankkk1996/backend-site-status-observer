@@ -250,7 +250,7 @@ app.post("/website/:id/check", authenticateToken, async (req, res) => {
 // Get all websites
 app.get("/websites", authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM websites");
+    const result = await pool.query("SELECT * FROM websites Order by name ASC");
     res.json(result.rows);
   } catch (err) {
     console.error(err);
