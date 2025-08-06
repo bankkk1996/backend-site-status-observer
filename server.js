@@ -165,17 +165,16 @@ app.patch("/users/:id", authenticateToken, async (req, res) => {
 
 // Add website
 app.post("/website", authenticateToken, async (req, res) => {
-  const { id, name, url } = req.body;
+  const { name, url } = req.body;
   const now = new Date();
 
   try {
     const check = await checkWebsite(url);
 
     await pool.query(
-      `INSERT INTO websites (id, name, url, status, response_time, last_checked, ssl_expired, ssl_expiry_date, domain_expiry_date, uptime)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      `INSERT INTO websites (name, url, status, response_time, last_checked, ssl_expired, ssl_expiry_date, domain_expiry_date, uptime)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [
-        id,
         name,
         url,
         check.status,
@@ -189,7 +188,7 @@ app.post("/website", authenticateToken, async (req, res) => {
     );
 
     await pool.query(
-      `INSERT INTO logs (time, action, username) VALUES ($1, $2, $3)`,
+      `INSERT INTO logs (timestamp, action, username) VALUES ($1, $2, $3)`,
       [now, `Add website ${name}`, req.user.username]
     );
 
