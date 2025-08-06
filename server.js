@@ -231,7 +231,7 @@ app.post("/website/:id/check", authenticateToken, async (req, res) => {
     );
 
     await pool.query(
-      `INSERT INTO logs (time, action, username) VALUES ($1, $2, $3)`,
+      `INSERT INTO logs (timestamp, action, username) VALUES ($1, $2, $3)`,
       [now, `Check website ${site.name}`, req.user.username]
     );
 
