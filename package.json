@@ -22,8 +22,5 @@
     "pg": "^8.16.3",
     "ssl-checker": "^2.0.10",
     "whois-json": "^2.0.4"
-  },
-  "engines": {
-    "node": "20.x"
   }
 }
