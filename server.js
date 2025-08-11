@@ -247,6 +247,67 @@ app.post("/website/:id/check", authenticateToken, async (req, res) => {
   }
 });
 
+app.post("/websites/check", authenticateToken, async (req, res) => {
+  const now = new Date();
+
+  try {
+    // ดึงเว็บไซต์ทั้งหมด
+    const sitesResult = await pool.query("SELECT * FROM websites");
+    const sites = sitesResult.rows;
+
+    if (sites.length === 0) {
+      return res.status(404).json({ message: "No websites found" });
+    }
+
+    // เช็คทุกเว็บพร้อมกัน
+    const results = await Promise.all(
+      sites.map(async (site) => {
+        const check = await checkWebsite(site.url);
+        const uptime = site.uptime + (check.status === "up" ? 1 : 0);
+
+        // อัปเดตสถานะใน DB
+        await pool.query(
+          `UPDATE websites 
+           SET status=$1, response_time=$2, last_checked=$3, ssl_expired=$4, ssl_expiry_date=$5, domain_expiry_date=$6, uptime=$7 
+           WHERE id=$8`,
+          [
+            check.status,
+            check.responseTime,
+            now,
+            check.sslExpired,
+            check.sslExpiryDate,
+            check.domainExpiryDate,
+            uptime,
+            site.id,
+          ]
+        );
+
+        // เพิ่ม log
+        await pool.query(
+          `INSERT INTO logs (time, action, username) VALUES ($1, $2, $3)`,
+          [now, `Check website ${site.name}`, req.user.username]
+        );
+
+        return {
+          ...site,
+          status: check.status,
+          response_time: check.responseTime,
+          last_checked: now,
+          ssl_expired: check.sslExpired,
+          ssl_expiry_date: check.sslExpiryDate,
+          domain_expiry_date: check.domainExpiryDate,
+          uptime,
+        };
+      })
+    );
+
+    res.json(results);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Get all websites
 app.get("/websites", authenticateToken, async (req, res) => {
   try {
