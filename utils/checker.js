@@ -1,11 +1,17 @@
 const axios = require("axios");
 const sslChecker = require("ssl-checker");
 const whois = require("whois-json");
+const https = require('https');
+
+const agent = new https.Agent({
+  rejectUnauthorized: false // ข้ามการตรวจสอบ SSL
+});
+
 
 async function checkDomainExpiry(domain) {
   try {
     const data = await whois(domain);
-    console.log("WHOIS data:", data);
+    // console.log("WHOIS data:", data);
 
     // key ยอดนิยมที่เก็บวันหมดอายุ
     const expiryStr =
@@ -36,14 +42,15 @@ async function checkWebsite(url) {
   let domainExpired = null;
 
   try {
-    const response = await axios.get(url);
+    const response = await axios.get(url, { httpsAgent: new https.Agent({ rejectUnauthorized: false }) });
+
+    console.log(response.status, url)
     const duration = Date.now() - start;
     status = response.status === 200 ? "online" : "offline";
     responseTime = duration;
 
     // ดึง hostname จาก url
     const domain = url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-
     // ตรวจสอบ SSL certificate
     const { daysRemaining, valid } = await sslChecker(domain, {
       method: "GET",
