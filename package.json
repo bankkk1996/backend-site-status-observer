@@ -24,6 +24,6 @@
     "whois-json": "^2.0.4"
   },
   "engines": {
-    "node": "22.15.0"
+    "node": "20.x"
   }
 }
