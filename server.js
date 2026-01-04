@@ -12,15 +12,18 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 
-// 2. แก้ไขบรรทัด app.use(cors()) เป็น:
+
+
+app.use(express.json());
+
 app.use(cors({
-  origin: "*", // หรือระบุโดเมนเจาะจง เช่น "https://my-frontend.vercel.app"
+  origin: "*", 
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-
-app.use(express.json());
+// แก้ไขบรรทัดนี้: รองรับ Pre-flight request สำหรับ Express 5
+app.options(/.*/, cors());
 
 // สร้าง pool สำหรับเชื่อมต่อ DB
 const pool = new Pool({
