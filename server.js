@@ -11,7 +11,17 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
-app.use(cors());
+
+// 2. แก้ไขบรรทัด app.use(cors()) เป็น:
+app.use(cors({
+  origin: "*", // หรือระบุโดเมนเจาะจง เช่น "https://my-frontend.vercel.app"
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+// 3. (สำคัญ) เพิ่มบรรทัดนี้ก่อนเข้า Route อื่นๆ เพื่อรองรับ Pre-flight request
+app.options("*", cors());
+
 app.use(express.json());
 
 // สร้าง pool สำหรับเชื่อมต่อ DB
@@ -371,6 +381,12 @@ app.get("/logs", authenticateToken, async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`✅ Server running on http://localhost:${port}`);
-});
+// ถ้าทำงานในเครื่อง Local ให้รัน app.listen ปกติ
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`✅ Server running on http://localhost:${port}`);
+  });
+}
+
+// สิ่งสำคัญ: ต้อง export app เพื่อให้ Vercel นำไปใช้
+module.exports = app;
