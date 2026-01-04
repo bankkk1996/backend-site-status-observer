@@ -19,8 +19,6 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// 3. (สำคัญ) เพิ่มบรรทัดนี้ก่อนเข้า Route อื่นๆ เพื่อรองรับ Pre-flight request
-app.options("*", cors());
 
 app.use(express.json());
 
