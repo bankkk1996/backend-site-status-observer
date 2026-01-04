@@ -62,6 +62,8 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
+  console.log(44545454)
+
   try {
     const userResult = await pool.query(
       "SELECT * FROM users WHERE username=$1",
@@ -308,8 +310,10 @@ app.post("/websites/check", authenticateToken, async (req, res) => {
   }
 });
 
+
+// authenticateToken,
 // Get all websites
-app.get("/websites", authenticateToken, async (req, res) => {
+app.get("/websites",  async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM websites Order by name ASC");
     res.json(result.rows);
@@ -359,7 +363,7 @@ app.patch("/website/:id", async (req, res)=>{
 // Get logs
 app.get("/logs", authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM logs ORDER BY time DESC");
+    const result = await pool.query("SELECT * FROM logs ORDER BY timestamp DESC");
     res.json(result.rows);
   } catch (err) {
     console.error(err);
